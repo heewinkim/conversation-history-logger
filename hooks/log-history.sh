@@ -6,10 +6,13 @@
 
 EVENT_TYPE="$1"
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-SESSION_ID="${CLAUDE_SESSION_ID:-$(date +%s)}"
+SESSION_ID="${CLAUDE_SESSION_ID:-$(date +%s%N)_$$}"
 SESSION_SHORT="${SESSION_ID:0:8}"
 DATE=$(date +"%Y-%m-%d")
 TIMESTAMP=$(date +"%H:%M:%S")
+
+# cmux 워크스페이스 이름 (없으면 빈 문자열)
+CMUX_WORKSPACE=$(cmux list-workspaces 2>/dev/null | grep '^\*' | sed 's/^\* workspace:[0-9]*[[:space:]]*//' | sed 's/[[:space:]]*\[selected\].*//')
 
 HISTORY_DIR="$PROJECT_DIR/full_history"
 SESSION_FILE="$HISTORY_DIR/${DATE}_${SESSION_SHORT}.md"
@@ -18,16 +21,17 @@ mkdir -p "$HISTORY_DIR"
 
 # 세션 파일이 없으면 헤더 생성
 if [ ! -f "$SESSION_FILE" ]; then
-  cat > "$SESSION_FILE" << EOF
-# Session: $DATE ($SESSION_SHORT)
-
-**Project**: $PROJECT_DIR
-**Started**: $(date +"%Y-%m-%d %H:%M:%S")
-**Session ID**: $SESSION_ID
-
----
-
-EOF
+  {
+    echo "# Session: $DATE ($SESSION_SHORT)"
+    echo ""
+    echo "**Project**: $PROJECT_DIR"
+    echo "**Started**: $(date +"%Y-%m-%d %H:%M:%S")"
+    echo "**Session ID**: $SESSION_ID"
+    [ -n "$CMUX_WORKSPACE" ] && echo "**Workspace**: $CMUX_WORKSPACE"
+    echo ""
+    echo "---"
+    echo ""
+  } > "$SESSION_FILE"
 fi
 
 INPUT=$(cat)
@@ -147,7 +151,13 @@ except:
     # 세션 JSONL에서 마지막 assistant 메시지 추출
     JSONL_DIR="$HOME/.claude/projects"
     PROJECT_HASH=$(echo "$PROJECT_DIR" | sed 's|/|-|g')
-    LATEST_JSONL=$(ls -t "$JSONL_DIR/$PROJECT_HASH/"*.jsonl 2>/dev/null | head -1)
+    # SESSION_ID로 정확한 파일 찾기 (동시 세션 간 충돌 방지)
+    EXACT_JSONL="$JSONL_DIR/$PROJECT_HASH/${SESSION_ID}.jsonl"
+    if [ -f "$EXACT_JSONL" ]; then
+      LATEST_JSONL="$EXACT_JSONL"
+    else
+      LATEST_JSONL=$(ls -t "$JSONL_DIR/$PROJECT_HASH/"*.jsonl 2>/dev/null | head -1)
+    fi
 
     if [ -n "$LATEST_JSONL" ]; then
       LAST_ASSISTANT=$(python3 -c "
