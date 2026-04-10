@@ -43,27 +43,25 @@ if 'hooks' not in settings:
 
 hooks = settings['hooks']
 
+def is_history_logger(cmd):
+    return 'history_logger' in cmd or 'log-history.sh' in cmd
+
+# 구버전 훅 정리: UserPromptSubmit, PostToolUse에서 history_logger 제거
+for event in ('UserPromptSubmit', 'PostToolUse'):
+    if event in hooks:
+        hooks[event] = [
+            g for g in hooks[event]
+            if not any(is_history_logger(h.get('command', '')) for h in g.get('hooks', []))
+        ]
+        if not hooks[event]:
+            del hooks[event]
+
 def already_registered(hook_list, cmd):
     for group in hook_list:
         for h in group.get('hooks', []):
             if h.get('command', '').startswith(cmd.split()[0]):
                 return True
     return False
-
-if 'UserPromptSubmit' not in hooks:
-    hooks['UserPromptSubmit'] = []
-if not already_registered(hooks['UserPromptSubmit'], hook_cmd):
-    hooks['UserPromptSubmit'].append({
-        "hooks": [{"type": "command", "command": f"{hook_cmd} user_prompt", "async": True}]
-    })
-
-if 'PostToolUse' not in hooks:
-    hooks['PostToolUse'] = []
-if not already_registered(hooks['PostToolUse'], hook_cmd):
-    hooks['PostToolUse'].append({
-        "matcher": "*",
-        "hooks": [{"type": "command", "command": f"{hook_cmd} post_tool", "async": True}]
-    })
 
 if 'Stop' not in hooks:
     hooks['Stop'] = []
