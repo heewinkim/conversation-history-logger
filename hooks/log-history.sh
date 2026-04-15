@@ -99,6 +99,9 @@ for e in entries:
         print(f"\n## 🤖 Assistant{ts_str}\n\n{e['content']}\n")
 PYEOF
     } > "$SESSION_FILE"
+
+    # 30일 초과 히스토리 자동 정리
+    find "$HISTORY_DIR" -name "*.md" -mtime +30 -delete 2>/dev/null
     ;;
 esac
 
