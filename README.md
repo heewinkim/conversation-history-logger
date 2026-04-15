@@ -40,6 +40,21 @@ my-project/                        ← 프로젝트 루트
 
 ---
 
+## 제거
+
+```bash
+bash conversation-history-logger/uninstall.sh
+```
+
+제거 방식 선택:
+
+| 선택 | 설명 |
+|---|---|
+| `1` 전역 | `~/.claude/hooks/history_logger/` 삭제 + `settings.json` 훅 항목 제거 |
+| `2` 로컬 | 프로젝트의 `.claude/hooks/history_logger/` 삭제 + `settings.json` 훅 항목 제거 + `full_history/` 삭제 여부 선택 |
+
+---
+
 ## 출력 형식
 
 세션마다 `full_history/{날짜}_{세션ID}.md` 파일이 생성된다.
